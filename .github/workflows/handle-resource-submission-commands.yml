@@ -58,24 +58,26 @@ jobs:
               content: 'rocket'
             });
       
-      - name: Parse issue and create PR
-        id: create_pr
+      - name: Parse issue
+        id: parse_issue
         if: contains(github.event.comment.body, '/approve') && contains(github.event.issue.labels.*.name, 'validation-passed')
         env:
           ISSUE_BODY: ${{ github.event.issue.body }}
+          PYTHONPATH: ${{ github.workspace }}
+        run: python -m scripts.resources.parse_issue_form
+
+      - name: Create PR with the resource
+        id: create_pr
+        if: contains(github.event.comment.body, '/approve') && contains(github.event.issue.labels.*.name, 'validation-passed')
+        env:
           ISSUE_NUMBER: ${{ github.event.issue.number }}
-          ISSUE_TITLE: ${{ github.event.issue.title }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PYTHONPATH: ${{ github.workspace }}
+          RESOURCE_DATA: ${{ steps.parse_issue.outputs.resource_data }}
         run: |
-          # TODO: Consider emitting issue parsing output via GITHUB_OUTPUT to avoid temp files.
-          # First parse the issue to get resource data
-          python -m scripts.resources.parse_issue_form > resource_data.json
-          
-          # Create the PR with the resource
           python -m scripts.resources.create_resource_pr \
-            --issue-number $ISSUE_NUMBER \
-            --resource-data resource_data.json
+            --issue-number "$ISSUE_NUMBER" \
+            --resource-data "$RESOURCE_DATA"
       
       - name: Comment on issue with results
         if: contains(github.event.comment.body, '/approve') && contains(github.event.issue.labels.*.name, 'validation-passed')
@@ -213,4 +215,4 @@ jobs:
       - name: Cleanup temporary files
         if: always()
         run: |
-          rm -f pr_result.json resource_data.json
+          rm -f pr_result.json

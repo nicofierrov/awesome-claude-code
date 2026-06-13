@@ -228,6 +228,16 @@ def check_for_duplicates(data: dict[str, str]) -> list[str]:
     return warnings
 
 
+def write_github_output(result: dict) -> None:
+    """Write the parsed result to GITHUB_OUTPUT, if available, for use by later steps."""
+    output_path = os.environ.get("GITHUB_OUTPUT")
+    if not output_path:
+        return
+
+    with open(output_path, "a", encoding="utf-8") as f:
+        f.write(f"resource_data<<EOF\n{json.dumps(result)}\nEOF\n")
+
+
 def main():
     """Main entry point for the script."""
     # Get issue body from environment variable
@@ -282,6 +292,9 @@ def main():
         if "_original_display_name" in parsed_data:
             del parsed_data["_original_display_name"]
         result = parsed_data
+
+    # Write the result to GITHUB_OUTPUT for use by later workflow steps
+    write_github_output(result)
 
     # Print compact JSON (no newlines) to make it easier to extract
     print(json.dumps(result))
